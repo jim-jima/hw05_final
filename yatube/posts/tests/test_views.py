@@ -1,5 +1,6 @@
 import shutil
 import tempfile
+from django.http import response
 
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -60,18 +61,22 @@ class PostsViewsTests(TestCase):
         )
         cls.post = Post.objects.create(
             text='Тестовый пост',
-            author=cls.user2,
+            author=cls.user,
             group=cls.group,
             image=f'{settings.UPLOAD_TO}{cls.uploaded.name}'
+        )
+        cls.post2 = Post.objects.create(
+            text = 'Ещё тестовый пост, ура!',
+            author=cls.user2
         )
         cls.comment = Comment.objects.create(
             post=cls.post,
             author=cls.user,
             text='Это комментарий, ура'
         )
-        cls.follow = Follow.objects.create(
-            author=cls.user,
-            user=cls.user2
+        Follow.objects.create(
+            author=cls.user2,
+            user=cls.user
         )
         cls.URL_POST_EDIT = reverse(
             'posts:post_edit', args=[cls.post.pk]
@@ -100,13 +105,12 @@ class PostsViewsTests(TestCase):
         self.authorized_client.force_login(PostsViewsTests.user)
         self.authorized_client3.force_login(PostsViewsTests.user3)
 
-    def test_post_shows_correctly_1(self):
+    def test_post_shows_correctly(self):
         urls = [
             MAIN_PAGE_URL,
             GROUP_URL,
             PROFILE_URL,
             PostsViewsTests.URL_POST_DETAIL,
-            FOLLOW_PAGE_URL
         ]
         for url in urls:
             response = self.authorized_client.get(url)
@@ -120,6 +124,11 @@ class PostsViewsTests(TestCase):
                 self.assertEqual(post.author, PostsViewsTests.post.author)
                 self.assertEqual(post.group, PostsViewsTests.post.group)
                 self.assertEqual(post.image, PostsViewsTests.post.image)
+
+    def test_follow_post_shows_correctly(self):
+        post = self.authorized_client.get(FOLLOW_PAGE_URL).context['page_obj'][0]
+        self.assertEqual(post.text, PostsViewsTests.post2.text)
+        self.assertEqual(post.author, PostsViewsTests.post2.author)
 
     def test_post_is_not_shown_not_in_its_group(self):
         response = self.authorized_client.get(SECOND_GROUP_URL)
