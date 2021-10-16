@@ -36,6 +36,7 @@ SMALL_GIF = (
     b'\x0A\x00\x3B'
 )
 
+
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
 class PostsViewsTests(TestCase):
     @classmethod
@@ -59,7 +60,7 @@ class PostsViewsTests(TestCase):
         )
         cls.post = Post.objects.create(
             text='Тестовый пост',
-            author=USER,
+            author=cls.user2,
             group=cls.group,
             image=f'{settings.UPLOAD_TO}{cls.uploaded.name}'
         )
