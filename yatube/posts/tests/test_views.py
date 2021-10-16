@@ -131,11 +131,6 @@ class PostsViewsTests(TestCase):
         self.assertEqual(post.text, post2.text)
         self.assertEqual(post.author, post2.author)
 
-    def test_user_cant_follow_himself(self):
-        count_folow_relations = Follow.objects.count()
-        self.authorized_client2.get(PostsViewsTests.PROFILE_FOLLOW)
-        self.assertEqual(count_folow_relations, Follow.objects.count())
-
     def test_post_is_not_shown_not_in_its_group(self):
         response = self.authorized_client.get(SECOND_GROUP_URL)
         self.assertNotIn(PostsViewsTests.post, response.context['page_obj'])
@@ -196,6 +191,16 @@ class PostsViewsTests(TestCase):
             response.content,
             self.authorized_client.get(MAIN_PAGE_URL).content
         )
+
+    def test_user_cant_follow_himself(self):
+        count_folow_relations = Follow.objects.count()
+        self.authorized_client2.get(PostsViewsTests.PROFILE_FOLLOW)
+        self.assertEqual(count_folow_relations, Follow.objects.count())
+
+    def test_user_can_follow_author_once(self):
+        count_folow_relations = Follow.objects.count()
+        self.authorized_client.get(PostsViewsTests.PROFILE_FOLLOW)
+        self.assertEqual(count_folow_relations, Follow.objects.count())
 
     def test_authorize_follow(self):
         count_folow_relations = Follow.objects.count()
