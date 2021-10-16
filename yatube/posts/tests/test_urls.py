@@ -1,5 +1,6 @@
 from django.test import TestCase, Client
 from django.urls import reverse
+from django.core.cache import cache
 
 from ..models import Group, Post, User
 
@@ -54,6 +55,12 @@ class PostUrlsTest(TestCase):
             'posts:profile_follow', args=[cls.second_authorized_user]
         )
 
+    def tearDown(self):
+        cache.clear()
+
+    def setUp(self):
+        cache.clear()
+
     def test_status_codes(self):
         cases = (
             (MAIN_PAGE_URL, PostUrlsTest.guest_client, 200),
@@ -104,8 +111,6 @@ class PostUrlsTest(TestCase):
             PostUrlsTest.EDIT_URL: 'posts/create_post.html',
             CREATE_URL: 'posts/create_post.html',
             FOLLOW_INDEX: 'posts/follow.html',
-            PostUrlsTest.PROFILE_FOLLOW: 'posts/follow.html',
-            PostUrlsTest.PROFILE_UNFOLLOW: 'posts/follow.html',
         }
         for adress, template in templates_url_names.items():
             with self.subTest(adress=adress):
