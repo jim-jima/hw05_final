@@ -1,6 +1,5 @@
 import shutil
 import tempfile
-from django.http import response
 
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
@@ -21,9 +20,7 @@ MAIN_PAGE_URL = reverse('posts:main_page')
 CREATE_URL = reverse('posts:post_create')
 GROUP_URL = reverse('posts:group_post', args=[SLUG])
 SECOND_GROUP_URL = reverse(
-    'posts:group_post', kwargs={
-        'slug': SECOND_SLUG
-    }
+    'posts:group_post', args=[SECOND_SLUG]
 )
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 FOLLOW_PAGE_URL = reverse('posts:follow_index')
@@ -66,7 +63,7 @@ class PostsViewsTests(TestCase):
             image=f'{settings.UPLOAD_TO}{cls.uploaded.name}'
         )
         cls.post2 = Post.objects.create(
-            text = 'Ещё тестовый пост, ура!',
+            text='Ещё тестовый пост, ура!',
             author=cls.user2
         )
         cls.comment = Comment.objects.create(
@@ -126,7 +123,9 @@ class PostsViewsTests(TestCase):
                 self.assertEqual(post.image, PostsViewsTests.post.image)
 
     def test_follow_post_shows_correctly(self):
-        post = self.authorized_client.get(FOLLOW_PAGE_URL).context['page_obj'][0]
+        post = self.authorized_client.get(
+            FOLLOW_PAGE_URL
+        ).context['page_obj'][0]
         self.assertEqual(post.text, PostsViewsTests.post2.text)
         self.assertEqual(post.author, PostsViewsTests.post2.author)
 
