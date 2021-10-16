@@ -46,7 +46,7 @@ def profile(request, username):
     context = {
         'author': user,
         'page_obj': page_object(request, user.posts.all()),
-        'following': following
+        'following': following,
     }
     return render(request, template, context)
 

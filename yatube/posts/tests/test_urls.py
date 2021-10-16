@@ -11,6 +11,7 @@ GROUP_URL = reverse('posts:group_post', args=[SLUG])
 PROFILE_URL = reverse('posts:profile', args=[USERNAME])
 UNEXISTING_URL = '/unexisting/'
 LOGIN_URL = reverse('users:login')
+FOLLOW_INDEX = reverse('posts:follow_index')
 
 
 class PostUrlsTest(TestCase):
@@ -45,6 +46,12 @@ class PostUrlsTest(TestCase):
         )
         cls.COMMENT_URL = reverse(
             'posts:add_comment', args=[cls.post.pk]
+        )
+        cls.PROFILE_FOLLOW = reverse(
+            'posts:profile_follow', args=[cls.second_authorized_user]
+        )
+        cls.PROFILE_UNFOLLOW = reverse(
+            'posts:profile_follow', args=[cls.second_authorized_user]
         )
 
     def test_status_codes(self):
@@ -96,9 +103,12 @@ class PostUrlsTest(TestCase):
             PostUrlsTest.POST_URL: 'posts/post_detail.html',
             PostUrlsTest.EDIT_URL: 'posts/create_post.html',
             CREATE_URL: 'posts/create_post.html',
+            FOLLOW_INDEX: 'posts/follow.html',
+            PostUrlsTest.PROFILE_FOLLOW: 'posts/follow.html',
+            PostUrlsTest.PROFILE_UNFOLLOW: 'posts/follow.html',
         }
         for adress, template in templates_url_names.items():
             with self.subTest(adress=adress):
                 self.assertTemplateUsed(
-                    self.authorized_client.get(adress), template
+                    PostUrlsTest.authorized_client.get(adress), template
                 )

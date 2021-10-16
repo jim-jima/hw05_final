@@ -67,9 +67,7 @@ class PostFormTests(TestCase):
             'posts:add_comment', args=[cls.post.pk]
         )
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
+    def tearDown(self):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):

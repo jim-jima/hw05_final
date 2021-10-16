@@ -60,11 +60,7 @@ class PostsViewsTests(TestCase):
             text='Тестовый пост',
             author=cls.user,
             group=cls.group,
-            image=f'{settings.UPLOAD_TO}{cls.uploaded.name}'
-        )
-        cls.post2 = Post.objects.create(
-            text='Ещё тестовый пост, ура!',
-            author=cls.user2
+            image=f'{settings.UPLOAD_TO}{cls.uploaded}'
         )
         cls.comment = Comment.objects.create(
             post=cls.post,
@@ -91,16 +87,16 @@ class PostsViewsTests(TestCase):
             'posts:profile_unfollow', args=[cls.user2]
         )
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
+    def tearDown(self):
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
+        cache.clear()
 
     def setUp(self):
         self.authorized_client = Client()
         self.authorized_client3 = Client()
         self.authorized_client.force_login(PostsViewsTests.user)
         self.authorized_client3.force_login(PostsViewsTests.user3)
+        cache.clear()
 
     def test_post_shows_correctly(self):
         urls = [
@@ -123,11 +119,15 @@ class PostsViewsTests(TestCase):
                 self.assertEqual(post.image, PostsViewsTests.post.image)
 
     def test_follow_post_shows_correctly(self):
+        post2 = Post.objects.create(
+            text='Ещё тестовый пост, ура!',
+            author=PostsViewsTests.user2
+        )
         post = self.authorized_client.get(
             FOLLOW_PAGE_URL
         ).context['page_obj'][0]
-        self.assertEqual(post.text, PostsViewsTests.post2.text)
-        self.assertEqual(post.author, PostsViewsTests.post2.author)
+        self.assertEqual(post.text, post2.text)
+        self.assertEqual(post.author, post2.author)
 
     def test_post_is_not_shown_not_in_its_group(self):
         response = self.authorized_client.get(SECOND_GROUP_URL)
