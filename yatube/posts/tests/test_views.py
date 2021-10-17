@@ -92,7 +92,7 @@ class PostsViewsTests(TestCase):
         cls.authorized_client.force_login(PostsViewsTests.user)
         cls.authorized_client2.force_login(PostsViewsTests.user2)
         cls.authorized_client3.force_login(PostsViewsTests.user3)
-    
+
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()

@@ -140,7 +140,8 @@ class PostFormTests(TestCase):
         self.assertEqual(edited_post.author, PostFormTests.user)
         self.assertEqual(edited_post.group.id, form_data['group'])
         self.assertEqual(
-            edited_post.image.name, f'{settings.UPLOAD_TO}{form_data["image"].name}'
+            edited_post.image.name,
+            f'{settings.UPLOAD_TO}{form_data["image"].name}'
         )
 
     def test_create_page_shows_correct_context(self):
