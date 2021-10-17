@@ -7,11 +7,12 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 
 from ..forms import PostForm
-from ..models import Group, Post, User
+from ..models import Comment, Group, Post, User
 from django import forms
 
 
 USERNAME = 'auth'
+USERNAME2 = 'auth2'
 SLUG = 'test-slug'
 SECOND_SLUG = 'test-slug-2'
 URL_POST_CREATE = reverse('posts:post_create')
@@ -27,6 +28,15 @@ SMALL_GIF = (
     b'\x02\x00\x01\x00\x00\x02\x02\x0C'
     b'\x0A\x00\x3B'
 )
+SMALL_GIF_2 = (
+    b'\x47\x49\x46\x38\x39\x61\x02\x00'
+    b'\xFF\xFF\xFF\x21\xF9\x04\x00\x00'
+    b'\x00\x00\x00\x2C\x00\x00\x00\x00'
+    b'\x01\x00\x80\x00\x00\x00\x00\x00'
+    b'\x02\x00\x01\x00\x00\x02\x02\x0C'
+    b'\x0A\x00\x3B'
+)
+TEXT_COMMENT = 'Ура, комментарий отправляется'
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -35,6 +45,7 @@ class PostFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username=USERNAME)
+        cls.user2 = User.objects.create_user(username=USERNAME2)
         cls.group = Group.objects.create(
             title='Тестовый заголовок',
             slug=SLUG,
@@ -45,16 +56,11 @@ class PostFormTests(TestCase):
             slug=SECOND_SLUG,
             description='тестовое описание 2 группы'
         )
-        cls.uploaded = SimpleUploadedFile(
-            name='small.gif',
-            content=SMALL_GIF,
-            content_type='image/gif'
-        )
         cls.post = Post.objects.create(
             text='Тестовый текст поста 1',
             author=cls.user,
             group=cls.group,
-            image=f'{settings.UPLOAD_TO}{cls.uploaded.name}'
+            image=None
         )
         cls.form = PostForm()
         cls.URL_POST_EDIT = reverse(
@@ -66,57 +72,80 @@ class PostFormTests(TestCase):
         cls.COMMENT_URL = reverse(
             'posts:add_comment', args=[cls.post.pk]
         )
+        cls.guest_client = Client()
+        cls.authorized_client = Client()
+        cls.authorized_client.force_login(PostFormTests.user)
+        cls.second_authorized_client = Client()
+        cls.second_authorized_client.force_login(PostFormTests.user2)
 
-    def tearDown(self):
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
     def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client.force_login(PostFormTests.user)
+        self.post = Post.objects.create(
+            author=self.user,
+            group=self.group,
+            text='Тестовый текст',
+        )
 
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
         Post.objects.all().delete()
+        uploaded = SimpleUploadedFile(
+            name='small1.gif',
+            content=SMALL_GIF,
+            content_type='image/gif'
+        )
         form_data = {
             'text': 'Тестовый текст поста 2',
             'group': PostFormTests.group.id,
-            'image': PostFormTests.uploaded
+            'image': uploaded
         }
-        response = self.authorized_client.post(
+        response = PostFormTests.authorized_client.post(
             URL_POST_CREATE,
             data=form_data,
             follow=True
         )
         self.assertEqual(Post.objects.count(), 1)
         self.assertRedirects(response, PROFILE_URL)
-        self.assertTrue(
-            Post.objects.filter(
-                text=form_data['text'],
-                group=form_data['group'],
-                image=f'{settings.UPLOAD_TO}{form_data["image"].name}'
-            ).exists()
+        new_post = Post.objects.all()[0]
+        self.assertEqual(new_post.text, form_data['text'])
+        self.assertEqual(new_post.group.id, form_data['group'])
+        self.assertEqual(new_post.author, PostFormTests.post.author)
+        self.assertEqual(
+            new_post.image, f'{settings.UPLOAD_TO}{form_data["image"]}'
         )
 
     def test_post_edit(self):
         """При отправке валидной формы в базе данных меняется пост."""
+        uploaded = SimpleUploadedFile(
+            name='small3.gif',
+            content=SMALL_GIF,
+            content_type='image/gif'
+        )
         form_data = {
             'text': 'Это пост 1, тестовый текст',
             'group': PostFormTests.group_2.id,
+            'image': uploaded,
         }
-        response = self.authorized_client.post(
+        response = PostFormTests.authorized_client.post(
             PostFormTests.URL_POST_EDIT,
             data=form_data,
             follow=True
         )
         edited_post = response.context['post']
-        self.assertRedirects(response, PostFormTests.URL_POST_DETAIL)
         self.assertEqual(edited_post.text, form_data['text'])
         self.assertEqual(edited_post.author, PostFormTests.user)
         self.assertEqual(edited_post.group.id, form_data['group'])
+        self.assertEqual(
+            edited_post.image.name, f'{settings.UPLOAD_TO}{form_data["image"].name}'
+        )
 
     def test_create_page_shows_correct_context(self):
         """Шаблон post_create сформирован с правильным контекстом."""
-        response = self.authorized_client.get(URL_POST_CREATE)
+        response = PostFormTests.authorized_client.get(URL_POST_CREATE)
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.models.ModelChoiceField,
@@ -127,3 +156,80 @@ class PostFormTests(TestCase):
             with self.subTest(value=value):
                 form_field = response.context.get('form').fields.get(value)
                 self.assertIsInstance(form_field, expected)
+
+    def test_create_comment(self):
+        Comment.objects.all().delete()
+        form_data = {
+            'text': TEXT_COMMENT
+        }
+        response = PostFormTests.authorized_client.post(
+            PostFormTests.COMMENT_URL,
+            data=form_data,
+            follow=True
+        )
+
+        self.assertEqual(Comment.objects.count(), 1)
+        self.assertRedirects(response, PostFormTests.URL_POST_DETAIL)
+        comment = Comment.objects.all()[0]
+        self.assertEqual(comment.text, form_data['text'])
+        self.assertEqual(comment.author, PostFormTests.user)
+        self.assertEqual(comment.post_id, PostFormTests.post.pk)
+
+    def test_guest_client_cant_create_post(self):
+        Post.objects.all().delete()
+        form_data = {
+            'text': 'Постов для теста много не бывает'
+        }
+        PostFormTests.guest_client.post(
+            PostFormTests.COMMENT_URL,
+            data=form_data,
+            follow=True
+        )
+        self.assertEqual(Comment.objects.count(), 0)
+
+    def test_guest_client_cant_edit_post(self):
+        uploaded_2 = SimpleUploadedFile(
+            name='small2.gif',
+            content=SMALL_GIF_2,
+            content_type='image/gif'
+        )
+        form_data = {
+            'text': 'Это пост 1, тестовый текст',
+            'group': PostFormTests.group_2.id,
+            'image': uploaded_2
+        }
+        PostFormTests.guest_client.post(
+            PostFormTests.URL_POST_EDIT,
+            data=form_data,
+            follow=True
+        )
+        self.assertNotEqual(PostFormTests.post.text, form_data['text'])
+        self.assertNotEqual(PostFormTests.post.group, form_data['group'])
+        self.assertNotEqual(
+            PostFormTests.post.image,
+            f'{settings.UPLOAD_TO}{form_data["image"]}'
+        )
+
+    def test_no_author_cant_edit_post(self):
+        uploaded_2 = SimpleUploadedFile(
+            name='small2.gif',
+            content=SMALL_GIF_2,
+            content_type='image/gif'
+        )
+        form_data = {
+            'text': 'Это пост 1, тестовый текст',
+            'group': PostFormTests.group_2.id,
+            'image': uploaded_2
+        }
+        PostFormTests.second_authorized_client.post(
+            PostFormTests.URL_POST_EDIT,
+            data=form_data,
+            follow=True
+        )
+        self.assertNotEqual(PostFormTests.post.text, form_data['text'])
+        self.assertNotEqual(PostFormTests.post.author, PostFormTests.user2)
+        self.assertNotEqual(PostFormTests.post.group, form_data['group'])
+        self.assertNotEqual(
+            PostFormTests.post.image,
+            f'{settings.UPLOAD_TO}{form_data["image"]}'
+        )

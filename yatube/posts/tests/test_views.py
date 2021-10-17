@@ -51,7 +51,7 @@ class PostsViewsTests(TestCase):
             title='Вторая группа',
             slug=SECOND_SLUG
         )
-        cls.uploaded = SimpleUploadedFile(
+        uploaded = SimpleUploadedFile(
             name='small.gif',
             content=SMALL_GIF,
             content_type='image/gif'
@@ -60,7 +60,7 @@ class PostsViewsTests(TestCase):
             text='Тестовый пост',
             author=cls.user,
             group=cls.group,
-            image=f'{settings.UPLOAD_TO}{cls.uploaded}'
+            image=uploaded
         )
         cls.comment = Comment.objects.create(
             post=cls.post,
@@ -68,8 +68,8 @@ class PostsViewsTests(TestCase):
             text='Это комментарий, ура'
         )
         Follow.objects.create(
-            author=cls.user2,
-            user=cls.user
+            author=cls.user,
+            user=cls.user2
         )
         cls.URL_POST_EDIT = reverse(
             'posts:post_edit', args=[cls.post.pk]
@@ -86,18 +86,19 @@ class PostsViewsTests(TestCase):
         cls.PROFILE_UNFOLLOW = reverse(
             'posts:profile_unfollow', args=[cls.user2]
         )
-
-    def tearDown(self):
+        cls.authorized_client = Client()
+        cls.authorized_client2 = Client()
+        cls.authorized_client3 = Client()
+        cls.authorized_client.force_login(PostsViewsTests.user)
+        cls.authorized_client2.force_login(PostsViewsTests.user2)
+        cls.authorized_client3.force_login(PostsViewsTests.user3)
+    
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
-        cache.clear()
 
     def setUp(self):
-        self.authorized_client = Client()
-        self.authorized_client2 = Client()
-        self.authorized_client3 = Client()
-        self.authorized_client.force_login(PostsViewsTests.user)
-        self.authorized_client2.force_login(PostsViewsTests.user2)
-        self.authorized_client3.force_login(PostsViewsTests.user3)
         cache.clear()
 
     def test_post_shows_correctly(self):
@@ -106,9 +107,10 @@ class PostsViewsTests(TestCase):
             GROUP_URL,
             PROFILE_URL,
             PostsViewsTests.URL_POST_DETAIL,
+            FOLLOW_PAGE_URL,
         ]
         for url in urls:
-            response = self.authorized_client.get(url)
+            response = PostsViewsTests.authorized_client2.get(url)
             with self.subTest(url=url):
                 if url == PostsViewsTests.URL_POST_DETAIL:
                     post = response.context['post']
@@ -120,97 +122,67 @@ class PostsViewsTests(TestCase):
                 self.assertEqual(post.group, PostsViewsTests.post.group)
                 self.assertEqual(post.image, PostsViewsTests.post.image)
 
-    def test_follow_post_shows_correctly(self):
-        post2 = Post.objects.create(
-            text='Ещё тестовый пост, ура!',
-            author=PostsViewsTests.user2
-        )
-        post = self.authorized_client.get(
-            FOLLOW_PAGE_URL
-        ).context['page_obj'][0]
-        self.assertEqual(post.text, post2.text)
-        self.assertEqual(post.author, post2.author)
-
     def test_post_is_not_shown_not_in_its_group(self):
-        response = self.authorized_client.get(SECOND_GROUP_URL)
+        response = PostsViewsTests.authorized_client.get(SECOND_GROUP_URL)
         self.assertNotIn(PostsViewsTests.post, response.context['page_obj'])
 
     def test_post_is_not_shown_in_user_not_following(self):
-        response = self.authorized_client3.get(FOLLOW_PAGE_URL)
+        response = PostsViewsTests.authorized_client3.get(FOLLOW_PAGE_URL)
         self.assertNotIn(PostsViewsTests.post, response.context['page_obj'])
 
     def test_author_on_profile(self):
-        response = self.authorized_client.get(PROFILE_URL)
+        response = PostsViewsTests.authorized_client.get(PROFILE_URL)
         self.assertEqual(PostsViewsTests.user, response.context['author'])
 
     def test_group_on_group_page(self):
-        response = self.authorized_client.get(GROUP_URL)
+        response = PostsViewsTests.authorized_client.get(GROUP_URL)
         group = response.context['group']
         self.assertEqual(PostsViewsTests.group.slug, group.slug)
         self.assertEqual(PostsViewsTests.group.title, group.title)
         self.assertEqual(PostsViewsTests.group.description, group.description)
 
-    def test_post_image_in_context(self):
-        cases = (
-            MAIN_PAGE_URL,
-            PROFILE_URL,
-            GROUP_URL,
-            PostsViewsTests.URL_POST_DETAIL,
+    def test_comment_on_url_post_detail(self):
+        response = PostsViewsTests.authorized_client.get(
+            PostsViewsTests.URL_POST_DETAIL
         )
-        for url in cases:
-            with self.subTest(url=url):
-                response = self.authorized_client.get(url)
-                if 'page_obj' in response.context:
-                    self.assertEqual(
-                        PostsViewsTests.post.image,
-                        response.context['page_obj'][0].image
-                    )
-                else:
-                    self.assertEqual(
-                        PostsViewsTests.post.image,
-                        response.context['post'].image
-                    )
-
-    def test_comment_on_URL_POST_DETAIL(self):
-        response = self.authorized_client.get(PostsViewsTests.URL_POST_DETAIL)
         self.assertIn(PostsViewsTests.comment, response.context['comments'])
 
     def test_cashe(self):
-        Post.objects.create(
-            text='Ещё один пост для тестов',
-            author=PostsViewsTests.user
-        )
-        response = self.authorized_client.get(MAIN_PAGE_URL)
+        response = PostsViewsTests.authorized_client.get(MAIN_PAGE_URL)
         Post.objects.last().delete()
         self.assertEqual(
             response.content,
-            self.authorized_client.get(MAIN_PAGE_URL).content
+            PostsViewsTests.authorized_client.get(MAIN_PAGE_URL).content
         )
         cache.clear()
         self.assertNotEqual(
             response.content,
-            self.authorized_client.get(MAIN_PAGE_URL).content
+            PostsViewsTests.authorized_client.get(MAIN_PAGE_URL).content
         )
 
     def test_user_cant_follow_himself(self):
-        count_folow_relations = Follow.objects.count()
-        self.authorized_client2.get(PostsViewsTests.PROFILE_FOLLOW)
-        self.assertEqual(count_folow_relations, Follow.objects.count())
+        PostsViewsTests.authorized_client2.get(PostsViewsTests.PROFILE_FOLLOW)
+        self.assertFalse(Follow.objects.filter(
+            user=PostsViewsTests.user2, author=PostsViewsTests.user2
+        ).exists())
 
     def test_user_can_follow_author_once(self):
-        count_folow_relations = Follow.objects.count()
-        self.authorized_client.get(PostsViewsTests.PROFILE_FOLLOW)
-        self.assertEqual(count_folow_relations, Follow.objects.count())
+        PostsViewsTests.authorized_client.get(PostsViewsTests.PROFILE_FOLLOW)
+        self.assertTrue(Follow.objects.filter(
+            user=PostsViewsTests.user, author=PostsViewsTests.user2
+        ).exists())
 
     def test_authorize_follow(self):
-        count_folow_relations = Follow.objects.count()
-        self.authorized_client3.get(PostsViewsTests.PROFILE_FOLLOW)
-        self.assertEqual(count_folow_relations + 1, Follow.objects.count())
+        PostsViewsTests.authorized_client3.get(PostsViewsTests.PROFILE_FOLLOW)
+        self.assertTrue(Follow.objects.filter(
+            user=PostsViewsTests.user3, author=PostsViewsTests.user2
+        ).exists())
 
     def test_authorize_unfollow(self):
-        count_folow_relations = Follow.objects.count()
-        self.authorized_client.get(PostsViewsTests.PROFILE_UNFOLLOW)
-        self.assertEqual(count_folow_relations - 1, Follow.objects.count())
+        PostsViewsTests.authorized_client.get(PostsViewsTests.PROFILE_UNFOLLOW)
+        self.assertFalse(Follow.objects.filter(
+            user=PostsViewsTests.user, author=PostsViewsTests.user2
+        ).exists())
 
 
 class PaginatorViewsTest(TestCase):
@@ -228,10 +200,8 @@ class PaginatorViewsTest(TestCase):
                 author=cls.user,
                 group=cls.group
             )
-
-    def setUp(self):
-        self.client = Client()
-        self.client.force_login(user=PaginatorViewsTest.user)
+        cls.client = Client()
+        cls.client.force_login(user=PaginatorViewsTest.user)
 
     def test_first_page_contains_some_records(self):
         names = [
@@ -241,7 +211,7 @@ class PaginatorViewsTest(TestCase):
         ]
         for name in names:
             with self.subTest(name=name):
-                response = self.client.get(name)
+                response = PaginatorViewsTest.client.get(name)
                 self.assertEqual(
                     len(response.context['page_obj']), POSTS_PER_PAGE
                 )
@@ -254,5 +224,5 @@ class PaginatorViewsTest(TestCase):
         }
         for name in names:
             with self.subTest(name=name):
-                response = self.client.get(name + '?page=2')
+                response = PaginatorViewsTest.client.get(name + '?page=2')
                 self.assertEqual(len(response.context['page_obj']), 1)

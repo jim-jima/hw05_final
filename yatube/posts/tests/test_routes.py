@@ -30,7 +30,10 @@ class RoutesTest(TestCase):
             (
                 'post_edit', [RoutesTest.post.pk],
                 f'/posts/{RoutesTest.post.pk}/edit/'
-            )
+            ),
+            ('follow_index', [], '/follow/'),
+            ('profile_follow', [USERNAME], f'/profile/{USERNAME}/follow/'),
+            ('profile_unfollow', [USERNAME], f'/profile/{USERNAME}/unfollow/')
         )
         for url_route, args, url in cases:
             with self.subTest(url=url):

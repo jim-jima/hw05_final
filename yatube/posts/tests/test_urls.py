@@ -2,17 +2,25 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.cache import cache
 
-from ..models import Group, Post, User
+from ..models import Follow, Group, Post, User
 
 SLUG = 'test-slug'
 USERNAME = 'auth'
+USERNAME2 = 'auth2'
+USERNAME3 = 'auth3'
 MAIN_PAGE_URL = reverse('posts:main_page')
 CREATE_URL = reverse('posts:post_create')
 GROUP_URL = reverse('posts:group_post', args=[SLUG])
-PROFILE_URL = reverse('posts:profile', args=[USERNAME])
+PROFILE_URL = reverse('posts:profile', args=[USERNAME2])
 UNEXISTING_URL = '/unexisting/'
 LOGIN_URL = reverse('users:login')
 FOLLOW_INDEX = reverse('posts:follow_index')
+PROFILE_FOLLOW = reverse(
+    'posts:profile_follow', args=[USERNAME2]
+)
+PROFILE_UNFOLLOW = reverse(
+    'posts:profile_unfollow', args=[USERNAME2]
+)
 
 
 class PostUrlsTest(TestCase):
@@ -33,11 +41,22 @@ class PostUrlsTest(TestCase):
         cls.authorized_client = Client()
         cls.authorized_client.force_login(cls.user)
         cls.second_authorized_user = User.objects.create_user(
-            username='test2'
+            username=USERNAME2
         )
-        cls.no_author = Client()
-        cls.no_author.force_login(
+        cls.second_authorized_client = Client()
+        cls.second_authorized_client.force_login(
             cls.second_authorized_user
+        )
+        cls.third_authorized_user = User.objects.create_user(
+            username=USERNAME3
+        )
+        cls.third_authorized_client = Client()
+        cls.third_authorized_client.force_login(
+            cls.third_authorized_user
+        )
+        Follow.objects.create(
+            user=cls.user,
+            author=cls.second_authorized_user
         )
         cls.POST_URL = reverse(
             'posts:post_detail', args=[cls.post.pk]
@@ -48,15 +67,6 @@ class PostUrlsTest(TestCase):
         cls.COMMENT_URL = reverse(
             'posts:add_comment', args=[cls.post.pk]
         )
-        cls.PROFILE_FOLLOW = reverse(
-            'posts:profile_follow', args=[cls.second_authorized_user]
-        )
-        cls.PROFILE_UNFOLLOW = reverse(
-            'posts:profile_follow', args=[cls.second_authorized_user]
-        )
-
-    def tearDown(self):
-        cache.clear()
 
     def setUp(self):
         cache.clear()
@@ -71,9 +81,15 @@ class PostUrlsTest(TestCase):
             (PostUrlsTest.EDIT_URL, PostUrlsTest.authorized_client, 200),
             (CREATE_URL, PostUrlsTest.authorized_client, 200),
             (PostUrlsTest.EDIT_URL, PostUrlsTest.guest_client, 302),
-            (PostUrlsTest.EDIT_URL, PostUrlsTest.no_author, 302),
+            (
+                PostUrlsTest.EDIT_URL,
+                PostUrlsTest.second_authorized_client, 302
+            ),
             (CREATE_URL, PostUrlsTest.guest_client, 302),
-            (PostUrlsTest.COMMENT_URL, PostUrlsTest.authorized_client, 302)
+            (PostUrlsTest.COMMENT_URL, PostUrlsTest.authorized_client, 302),
+            (FOLLOW_INDEX, PostUrlsTest.authorized_client, 200),
+            (PROFILE_FOLLOW, PostUrlsTest.third_authorized_client, 302),
+            (PROFILE_UNFOLLOW, PostUrlsTest.authorized_client, 302),
         )
 
         for url, client, status in cases:
@@ -91,8 +107,20 @@ class PostUrlsTest(TestCase):
                 f'{LOGIN_URL}?next={CREATE_URL}'
             ),
             (
-                PostUrlsTest.EDIT_URL, PostUrlsTest.no_author,
+                PostUrlsTest.EDIT_URL, PostUrlsTest.second_authorized_client,
                 PostUrlsTest.POST_URL,
+            ),
+            (
+                PostUrlsTest.COMMENT_URL, PostUrlsTest.authorized_client,
+                PostUrlsTest.POST_URL
+            ),
+            (
+                PROFILE_FOLLOW, PostUrlsTest.third_authorized_client,
+                PROFILE_URL
+            ),
+            (
+                PROFILE_UNFOLLOW, PostUrlsTest.third_authorized_client,
+                PROFILE_URL
             )
         )
         for url, client, redirect in cases:
