@@ -16,7 +16,7 @@
             </a>
           {% endif %}
         </li>
-        {% include 'includes/posts_showing.html' %} 
+        {% include 'posts/includes/card_post.html' %} 
       </ul>
     </aside>
     <article class="col-12 col-md-9">
@@ -24,6 +24,6 @@
         {{ post.text|linebreaksbr }}
       </p>
     </article>
-    {% include 'includes/add_comment.html' %}
+    {% include 'posts/includes/add_comment.html' %}
   </div> 
 {% endblock %}

@@ -9,7 +9,7 @@
   <p>{{ group.description|linebreaksbr }}</p>
   <div class="container py-5">
     {% for post in page_obj %}
-      {% include 'includes/posts_showing.html' %} 
+      {% include 'posts/includes/card_post.html' with hide_group=True%} 
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %} 
   </div>

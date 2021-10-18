@@ -83,13 +83,6 @@ class PostFormTests(TestCase):
         super().tearDownClass()
         shutil.rmtree(TEMP_MEDIA_ROOT, ignore_errors=True)
 
-    def setUp(self):
-        self.post = Post.objects.create(
-            author=self.user,
-            group=self.group,
-            text='Тестовый текст',
-        )
-
     def test_create_post(self):
         """Валидная форма создает запись в Post."""
         Post.objects.all().delete()
@@ -110,10 +103,10 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(Post.objects.count(), 1)
         self.assertRedirects(response, PROFILE_URL)
-        new_post = Post.objects.all()[0]
+        new_post = response.context['post']
         self.assertEqual(new_post.text, form_data['text'])
         self.assertEqual(new_post.group.id, form_data['group'])
-        self.assertEqual(new_post.author, PostFormTests.post.author)
+        self.assertEqual(new_post.author, PostFormTests.user)
         self.assertEqual(
             new_post.image, f'{settings.UPLOAD_TO}{form_data["image"]}'
         )
@@ -137,7 +130,7 @@ class PostFormTests(TestCase):
         )
         edited_post = response.context['post']
         self.assertEqual(edited_post.text, form_data['text'])
-        self.assertEqual(edited_post.author, PostFormTests.user)
+        self.assertEqual(edited_post.author, PostFormTests.post.author)
         self.assertEqual(edited_post.group.id, form_data['group'])
         self.assertEqual(
             edited_post.image.name,
@@ -171,7 +164,7 @@ class PostFormTests(TestCase):
 
         self.assertEqual(Comment.objects.count(), 1)
         self.assertRedirects(response, PostFormTests.URL_POST_DETAIL)
-        comment = Comment.objects.all()[0]
+        comment = PostFormTests.post.comments.all()[0]
         self.assertEqual(comment.text, form_data['text'])
         self.assertEqual(comment.author, PostFormTests.user)
         self.assertEqual(comment.post_id, PostFormTests.post.pk)
@@ -188,49 +181,29 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(Comment.objects.count(), 0)
 
-    def test_guest_client_cant_edit_post(self):
-        uploaded_2 = SimpleUploadedFile(
-            name='small2.gif',
-            content=SMALL_GIF_2,
+    def test_not_author_or_guest_client_edit_post(self):
+        uploaded = SimpleUploadedFile(
+            name='small.gif',
+            content=SMALL_GIF,
             content_type='image/gif'
         )
+        clients = [
+            PostFormTests.second_authorized_client,
+            PostFormTests.guest_client
+        ]
         form_data = {
-            'text': 'Это пост 1, тестовый текст',
-            'group': PostFormTests.group_2.id,
-            'image': uploaded_2
+            'text': 'тестовый текст номер миллион',
+            'group': self.group_2.pk,
+            'image': uploaded
         }
-        PostFormTests.guest_client.post(
-            PostFormTests.URL_POST_EDIT,
-            data=form_data,
-            follow=True
-        )
-        self.assertNotEqual(PostFormTests.post.text, form_data['text'])
-        self.assertNotEqual(PostFormTests.post.group, form_data['group'])
-        self.assertNotEqual(
-            PostFormTests.post.image,
-            f'{settings.UPLOAD_TO}{form_data["image"]}'
-        )
-
-    def test_no_author_cant_edit_post(self):
-        uploaded_2 = SimpleUploadedFile(
-            name='small2.gif',
-            content=SMALL_GIF_2,
-            content_type='image/gif'
-        )
-        form_data = {
-            'text': 'Это пост 1, тестовый текст',
-            'group': PostFormTests.group_2.id,
-            'image': uploaded_2
-        }
-        PostFormTests.second_authorized_client.post(
-            PostFormTests.URL_POST_EDIT,
-            data=form_data,
-            follow=True
-        )
-        self.assertNotEqual(PostFormTests.post.text, form_data['text'])
-        self.assertNotEqual(PostFormTests.post.author, PostFormTests.user2)
-        self.assertNotEqual(PostFormTests.post.group, form_data['group'])
-        self.assertNotEqual(
-            PostFormTests.post.image,
-            f'{settings.UPLOAD_TO}{form_data["image"]}'
-        )
+        for client in clients:
+            with self.subTest(client=client):
+                response = client.post(
+                    self.URL_POST_EDIT,
+                    data=form_data,
+                    follow=True,
+                )
+                self.assertEqual(PostFormTests.post.author, PostFormTests.user)
+                self.assertEqual(PostFormTests.post.text, PostFormTests.post.text)
+                self.assertEqual(PostFormTests.post.group, PostFormTests.post.group)
+                self.assertEqual(PostFormTests.post.image, PostFormTests.post.image)

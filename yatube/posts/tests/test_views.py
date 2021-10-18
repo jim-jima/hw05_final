@@ -33,6 +33,12 @@ SMALL_GIF = (
     b'\x02\x00\x01\x00\x00\x02\x02\x0C'
     b'\x0A\x00\x3B'
 )
+PROFILE_FOLLOW = reverse(
+    'posts:profile_follow', args=[USERNAME2]
+)
+PROFILE_UNFOLLOW = reverse(
+    'posts:profile_unfollow', args=[USERNAME2]
+)
 
 
 @override_settings(MEDIA_ROOT=TEMP_MEDIA_ROOT)
@@ -76,15 +82,6 @@ class PostsViewsTests(TestCase):
         )
         cls.URL_POST_DETAIL = reverse(
             'posts:post_detail', args=[cls.post.pk]
-        )
-        cls.COMMENT_URL = reverse(
-            'posts:add_comment', args=[cls.post.pk]
-        )
-        cls.PROFILE_FOLLOW = reverse(
-            'posts:profile_follow', args=[cls.user2]
-        )
-        cls.PROFILE_UNFOLLOW = reverse(
-            'posts:profile_unfollow', args=[cls.user2]
         )
         cls.authorized_client = Client()
         cls.authorized_client2 = Client()
@@ -161,25 +158,25 @@ class PostsViewsTests(TestCase):
         )
 
     def test_user_cant_follow_himself(self):
-        PostsViewsTests.authorized_client2.get(PostsViewsTests.PROFILE_FOLLOW)
+        PostsViewsTests.authorized_client2.get(PROFILE_FOLLOW)
         self.assertFalse(Follow.objects.filter(
             user=PostsViewsTests.user2, author=PostsViewsTests.user2
         ).exists())
 
     def test_user_can_follow_author_once(self):
-        PostsViewsTests.authorized_client.get(PostsViewsTests.PROFILE_FOLLOW)
+        PostsViewsTests.authorized_client.get(PROFILE_FOLLOW)
         self.assertTrue(Follow.objects.filter(
             user=PostsViewsTests.user, author=PostsViewsTests.user2
         ).exists())
 
     def test_authorize_follow(self):
-        PostsViewsTests.authorized_client3.get(PostsViewsTests.PROFILE_FOLLOW)
+        PostsViewsTests.authorized_client3.get(PROFILE_FOLLOW)
         self.assertTrue(Follow.objects.filter(
             user=PostsViewsTests.user3, author=PostsViewsTests.user2
         ).exists())
 
     def test_authorize_unfollow(self):
-        PostsViewsTests.authorized_client.get(PostsViewsTests.PROFILE_UNFOLLOW)
+        PostsViewsTests.authorized_client.get(PROFILE_UNFOLLOW)
         self.assertFalse(Follow.objects.filter(
             user=PostsViewsTests.user, author=PostsViewsTests.user2
         ).exists())
@@ -202,6 +199,9 @@ class PaginatorViewsTest(TestCase):
             )
         cls.client = Client()
         cls.client.force_login(user=PaginatorViewsTest.user)
+
+    def setUp(self):
+        cache.clear()
 
     def test_first_page_contains_some_records(self):
         names = [

@@ -2,9 +2,9 @@
 {% load thumbnail %}
 {% block title %}Посты авторов, на которых Вы подписаны{% endblock %}
 {% block content %}
-  {% include 'includes/switcher.html' with follow=True %}
+  {% include 'posts/includes/switcher.html' with follow=True %}
   {% for post in page_obj %}
-      {% include 'includes/posts_showing.html' %} 
+    {% include 'posts/includes/card_post.html' %} 
     {% if not forloop.last %}<hr>{% endif %}
   {% endfor %} 
   {% include 'posts/includes/paginator.html' %}

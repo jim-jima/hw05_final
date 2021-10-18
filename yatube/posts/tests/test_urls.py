@@ -64,9 +64,6 @@ class PostUrlsTest(TestCase):
         cls.EDIT_URL = reverse(
             'posts:post_edit', args=[cls.post.pk]
         )
-        cls.COMMENT_URL = reverse(
-            'posts:add_comment', args=[cls.post.pk]
-        )
 
     def setUp(self):
         cache.clear()
@@ -86,7 +83,6 @@ class PostUrlsTest(TestCase):
                 PostUrlsTest.second_authorized_client, 302
             ),
             (CREATE_URL, PostUrlsTest.guest_client, 302),
-            (PostUrlsTest.COMMENT_URL, PostUrlsTest.authorized_client, 302),
             (FOLLOW_INDEX, PostUrlsTest.authorized_client, 200),
             (PROFILE_FOLLOW, PostUrlsTest.third_authorized_client, 302),
             (PROFILE_UNFOLLOW, PostUrlsTest.authorized_client, 302),
@@ -111,15 +107,11 @@ class PostUrlsTest(TestCase):
                 PostUrlsTest.POST_URL,
             ),
             (
-                PostUrlsTest.COMMENT_URL, PostUrlsTest.authorized_client,
-                PostUrlsTest.POST_URL
-            ),
-            (
                 PROFILE_FOLLOW, PostUrlsTest.third_authorized_client,
                 PROFILE_URL
             ),
             (
-                PROFILE_UNFOLLOW, PostUrlsTest.third_authorized_client,
+                PROFILE_UNFOLLOW, PostUrlsTest.authorized_client,
                 PROFILE_URL
             )
         )
