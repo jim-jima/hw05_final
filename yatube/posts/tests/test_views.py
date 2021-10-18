@@ -37,7 +37,7 @@ PROFILE_FOLLOW = reverse(
     'posts:profile_follow', args=[USERNAME2]
 )
 PROFILE_UNFOLLOW = reverse(
-    'posts:profile_unfollow', args=[USERNAME2]
+    'posts:profile_unfollow', args=[USERNAME]
 )
 
 
@@ -179,7 +179,9 @@ class PostsViewsTests(TestCase):
         self.assertTrue(Follow.objects.filter(
             user=PostsViewsTests.user, author=PostsViewsTests.user2
         ).exists())
-        PostsViewsTests.authorized_client.get(PostsViewsTests.PROFILE_UNFOLLOW)
+        PostsViewsTests.authorized_client2.get(
+            PostsViewsTests.PROFILE_UNFOLLOW
+        )
         self.assertFalse(Follow.objects.filter(
             user=PostsViewsTests.user, author=PostsViewsTests.user2
         ).exists())
