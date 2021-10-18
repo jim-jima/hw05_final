@@ -198,12 +198,21 @@ class PostFormTests(TestCase):
         }
         for client in clients:
             with self.subTest(client=client):
-                response = client.post(
+                client.post(
                     self.URL_POST_EDIT,
                     data=form_data,
                     follow=True,
                 )
                 self.assertEqual(PostFormTests.post.author, PostFormTests.user)
-                self.assertEqual(PostFormTests.post.text, PostFormTests.post.text)
-                self.assertEqual(PostFormTests.post.group, PostFormTests.post.group)
-                self.assertEqual(PostFormTests.post.image, PostFormTests.post.image)
+                self.assertEqual(
+                    PostFormTests.post.text,
+                    PostFormTests.post.text
+                )
+                self.assertEqual(
+                    PostFormTests.post.group,
+                    PostFormTests.post.group
+                )
+                self.assertEqual(
+                    PostFormTests.post.image,
+                    PostFormTests.post.image
+                )
