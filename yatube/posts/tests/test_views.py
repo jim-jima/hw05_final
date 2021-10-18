@@ -170,6 +170,9 @@ class PostsViewsTests(TestCase):
         ).exists())
 
     def test_authorize_follow(self):
+        self.assertFalse(Follow.objects.filter(
+            user=PostsViewsTests.user3, author=PostsViewsTests.user2
+        ).exists())
         PostsViewsTests.authorized_client3.get(PROFILE_FOLLOW)
         self.assertTrue(Follow.objects.filter(
             user=PostsViewsTests.user3, author=PostsViewsTests.user2
