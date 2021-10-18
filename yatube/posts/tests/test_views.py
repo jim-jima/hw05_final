@@ -177,13 +177,13 @@ class PostsViewsTests(TestCase):
 
     def test_authorize_unfollow(self):
         self.assertTrue(Follow.objects.filter(
-            user=PostsViewsTests.user, author=PostsViewsTests.user2
+            user=PostsViewsTests.user2, author=PostsViewsTests.user
         ).exists())
         PostsViewsTests.authorized_client2.get(
             PROFILE_UNFOLLOW
         )
         self.assertFalse(Follow.objects.filter(
-            user=PostsViewsTests.user, author=PostsViewsTests.user2
+            user=PostsViewsTests.user2, author=PostsViewsTests.user
         ).exists())
 
 
