@@ -170,7 +170,7 @@ class PostsViewsTests(TestCase):
         ).exists())
 
     def test_authorize_follow(self):
-        PostsViewsTests.authorized_client3.get(PostsViewsTests.PROFILE_FOLLOW)
+        PostsViewsTests.authorized_client3.get(PROFILE_FOLLOW)
         self.assertTrue(Follow.objects.filter(
             user=PostsViewsTests.user3, author=PostsViewsTests.user2
         ).exists())
@@ -180,7 +180,7 @@ class PostsViewsTests(TestCase):
             user=PostsViewsTests.user, author=PostsViewsTests.user2
         ).exists())
         PostsViewsTests.authorized_client2.get(
-            PostsViewsTests.PROFILE_UNFOLLOW
+            PROFILE_UNFOLLOW
         )
         self.assertFalse(Follow.objects.filter(
             user=PostsViewsTests.user, author=PostsViewsTests.user2
