@@ -189,6 +189,14 @@ class PostsViewsTests(TestCase):
             user=PostsViewsTests.user2, author=PostsViewsTests.user
         ).exists())
 
+    def test_new_record_not_appears_at_foreign_feed(self):
+        foreign_page_obj = (
+            PostsViewsTests.authorized_client.get(
+                FOLLOW_PAGE_URL
+            ).context['page_obj']
+        )
+        self.assertNotIn(PostsViewsTests.post, foreign_page_obj)
+
 
 class PaginatorViewsTest(TestCase):
     @classmethod
