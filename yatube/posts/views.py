@@ -43,15 +43,10 @@ def profile(request, username):
         and request.user != user
         and Follow.objects.filter(user=request.user, author=user).exists()
     )
-    author_or_guest = (
-        request.user == user
-        or request.user.is_authenticated is False
-    )
     context = {
         'author': user,
         'page_obj': page_object(request, user.posts.all()),
         'following': following,
-        'author_or_guest': author_or_guest,
     }
     return render(request, template, context)
 

@@ -7,7 +7,7 @@
     <h3>Всего постов: {{ author.posts.count }} </h3>
     <h3>Подписки: {{ author.follower.count }} </h3>
     <h3>Подписчики: {{ author.following.count }} </h3>
-    {% if not author_or_guest %}
+    {% if author.is_authenticated and request.user != author %}
       {% if following %}
         <a
           class="btn btn-lg btn-light"

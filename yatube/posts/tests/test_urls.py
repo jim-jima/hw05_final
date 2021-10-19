@@ -86,6 +86,9 @@ class PostUrlsTest(TestCase):
             (FOLLOW_INDEX, PostUrlsTest.authorized_client, 200),
             (PROFILE_FOLLOW, PostUrlsTest.third_authorized_client, 302),
             (PROFILE_UNFOLLOW, PostUrlsTest.authorized_client, 302),
+            (PROFILE_UNFOLLOW, PostUrlsTest.guest_client, 302),
+            (PROFILE_FOLLOW, PostUrlsTest.guest_client, 302),
+            (FOLLOW_INDEX, PostUrlsTest.guest_client, 302),
         )
 
         for url, client, status in cases:
@@ -113,7 +116,19 @@ class PostUrlsTest(TestCase):
             (
                 PROFILE_UNFOLLOW, PostUrlsTest.authorized_client,
                 PROFILE_URL
-            )
+            ),
+            (
+                PROFILE_FOLLOW, PostUrlsTest.guest_client,
+                f'{LOGIN_URL}?next={PROFILE_FOLLOW}'
+            ),
+            (
+                PROFILE_UNFOLLOW, PostUrlsTest.guest_client,
+                f'{LOGIN_URL}?next={PROFILE_UNFOLLOW}'
+            ),
+            (
+                FOLLOW_INDEX, PostUrlsTest.guest_client,
+                f'{LOGIN_URL}?next={FOLLOW_INDEX}'
+            ),
         )
         for url, client, redirect in cases:
             with self.subTest(url=url):

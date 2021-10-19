@@ -60,7 +60,6 @@ class PostFormTests(TestCase):
             text='Тестовый текст поста 1',
             author=cls.user,
             group=cls.group,
-            image=None
         )
         cls.form = PostForm()
         cls.URL_POST_EDIT = reverse(
@@ -103,7 +102,7 @@ class PostFormTests(TestCase):
         )
         self.assertEqual(Post.objects.count(), 1)
         self.assertRedirects(response, PROFILE_URL)
-        new_post = response.context['post']
+        new_post = response.context['page_obj'][0]
         self.assertEqual(new_post.text, form_data['text'])
         self.assertEqual(new_post.group.id, form_data['group'])
         self.assertEqual(new_post.author, PostFormTests.user)
@@ -164,7 +163,7 @@ class PostFormTests(TestCase):
 
         self.assertEqual(Comment.objects.count(), 1)
         self.assertRedirects(response, PostFormTests.URL_POST_DETAIL)
-        comment = PostFormTests.post.comments.all()[0]
+        comment = Comment.objects.all()[0]
         self.assertEqual(comment.text, form_data['text'])
         self.assertEqual(comment.author, PostFormTests.user)
         self.assertEqual(comment.post_id, PostFormTests.post.pk)
@@ -203,16 +202,17 @@ class PostFormTests(TestCase):
                     data=form_data,
                     follow=True,
                 )
-                self.assertEqual(PostFormTests.post.author, PostFormTests.user)
+                edited_post = Post.objects.filter(pk=PostFormTests.post.pk)[0]
+                self.assertEqual(PostFormTests.post.author, edited_post.author)
                 self.assertEqual(
                     PostFormTests.post.text,
-                    PostFormTests.post.text
+                    edited_post.text
                 )
                 self.assertEqual(
                     PostFormTests.post.group,
-                    PostFormTests.post.group
+                    edited_post.group
                 )
                 self.assertEqual(
                     PostFormTests.post.image,
-                    PostFormTests.post.image
+                    edited_post.image
                 )
